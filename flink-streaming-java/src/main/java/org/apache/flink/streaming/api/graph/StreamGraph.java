@@ -318,6 +318,7 @@ public class StreamGraph implements Pipeline {
             TypeInformation<IN> inTypeInfo,
             TypeInformation<OUT> outTypeInfo,
             String operatorName) {
+        // 是否是StreamSource, 是则SourceStreamTask否则OneInputStreamTask
         Class<? extends AbstractInvokable> invokableClass =
                 operatorFactory.isStreamSource()
                         ? SourceStreamTask.class
@@ -343,6 +344,7 @@ public class StreamGraph implements Pipeline {
             String operatorName,
             Class<? extends AbstractInvokable> invokableClass) {
 
+        // streamNodes.put(vertexID, vertex)
         addNode(
                 vertexID,
                 slotSharingGroup,

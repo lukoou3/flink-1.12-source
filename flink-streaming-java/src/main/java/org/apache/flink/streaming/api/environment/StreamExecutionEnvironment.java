@@ -1779,6 +1779,40 @@ public class StreamExecutionEnvironment {
     public JobExecutionResult execute(String jobName) throws Exception {
         Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
 
+        /**
+         * 作业生成的入口: jobName默认是"Flink Streaming Job"
+         * [[getStreamGraphh(jobName)}]] 构建Stream Graph
+         *      transformations传入[[StreamGraphGenerator]]构造函数
+         *      调用StreamGraphGenerator的generate()方法生成StreamGraph
+         *      StreamGraph的主要属性：
+         *          Map<Integer, StreamNode> streamNodes：其实就是operator的信息, StreamNode的operatorFactory存有operator，inEdges,outEdges存有连接信息
+         *          Set<Integer> sources：sources的ids
+         *          Set<Integer> sinks：sinks的ids
+         * [[StreamGraph.getJobGraph()}]] 构建Job Graph, 直接调用的是[[StreamingJobGraphGenerator.createJobGraph(this, jobID)]]
+         *      直接调用的[[new StreamingJobGraphGenerator(streamGraph, jobID).createJobGraph()]]
+         *      创建JobGraph的主要逻辑就是StreamingJobGraphGenerator类的createJobGraph方法：
+         *
+         *
+         * 提交：org.apache.flink.runtime.jobmaster.RpcTaskManagerGateway#submitTask()
+         * 响应：org.apache.flink.runtime.taskexecutor.TaskExecutor#submitTask()
+         * 调用task：task.startTaskThread()
+         * 调用org.apache.flink.streaming.runtime.tasks.StreamTask#invoke()
+         *      beforeInvoke中反序列化operatorChain得到执行逻辑
+         *      SourceStreamTask的内部类LegacySourceFunctionThread的run()
+         *      StreamSource(AbstractUdfStreamOperator)类userFunction(SourceFunction)的run
+         *      SourceFunction中调用ctx.collect不停的生产元素, ManualWatermarkContext中调用processAndCollect(T element)
+         *      OneInputStreamOperatorOutput的collect调用operator.processElement(castRecord)
+         *      其中调用的output.collect其实就是Operator一层层的调用，上层调用下层。
+         *      关键逻辑就是operator.processElement(castRecord):
+         *          StreamMap: output.collect(element.replace(userFunction.map(element.getValue())))
+         *          StreamFilter: if (userFunction.filter(element.getValue())) => output.collect(element)
+         *          StreamFlatMap: collector.setTimestamp(element); userFunction.flatMap(element.getValue(), collector);
+         *      单个stage/chain的Operator不间断的逐层调用, 不同stage/chain的数据传输类似spark的shuffle, 这个之后有时间再看
+         *      spark的分区迭代和flink的正好相反, flink是从前往后调用, 而spark则是从后往前调用。
+         *      spark的代码实现比flink少的多，flink的跳来跳去中间用的类也比较多, 比spark复杂的多。
+         *
+         *
+         */
         return execute(getStreamGraph(jobName));
     }
 
@@ -1955,6 +1989,7 @@ public class StreamExecutionEnvironment {
      */
     @Internal
     public StreamGraph getStreamGraph(String jobName, boolean clearTransformations) {
+        // 创建一个StreamGraphGenerator对象，设置参数，并调用generate方法生成stream graph
         StreamGraph streamGraph = getStreamGraphGenerator().setJobName(jobName).generate();
         if (clearTransformations) {
             this.transformations.clear();
@@ -1970,6 +2005,7 @@ public class StreamExecutionEnvironment {
 
         final RuntimeExecutionMode executionMode = configuration.get(ExecutionOptions.RUNTIME_MODE);
 
+        // 主要就是把transformations传入transformations
         return new StreamGraphGenerator(transformations, config, checkpointCfg, getConfiguration())
                 .setRuntimeExecutionMode(executionMode)
                 .setStateBackend(defaultStateBackend)
