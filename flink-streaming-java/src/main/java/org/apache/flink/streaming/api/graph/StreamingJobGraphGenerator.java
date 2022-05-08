@@ -176,6 +176,7 @@ public class StreamingJobGraphGenerator {
             legacyHashes.add(hasher.traverseStreamGraphAndGenerateHashes(streamGraph));
         }
 
+        // 重点: 合并
         setChaining(hashes, legacyHashes);
 
         setPhysicalEdges();
@@ -378,6 +379,7 @@ public class StreamingJobGraphGenerator {
             StreamNode currentNode = streamGraph.getStreamNode(currentNodeId);
 
             for (StreamEdge outEdge : currentNode.getOutEdges()) {
+                // 判断是否能连接两个Operator
                 if (isChainable(outEdge, streamGraph)) {
                     chainableOutputs.add(outEdge);
                 } else {
@@ -848,9 +850,28 @@ public class StreamingJobGraphGenerator {
         }
     }
 
+    /**
+     * 判断edge是否可以被chainable, 每个条件都要满足：
+     *   downStreamVertex.getInEdges().size() == 1: 下游的入边为1
+     *   upStreamVertex.isSameSlotSharingGroup(downStreamVertex): 上下游算子处于同一个SlotSharingGroup中
+     *   downStreamOperator != null && upStreamOperator != null: 上下游算子不能为空
+     *   downStreamOperator.getChainingStrategy() == ALWAYS: 下游算子的链接策略必须是always
+     *   upStreamOperator.getChainingStrategy() == ALWAYS or HEAD: 上游算子的链接策略是always或者head
+     *   edge.getPartitioner() instanceof ForwardPartitioner: 两个算子间的物理分区逻辑是ForwardPartitioner
+     *   edge.getShuffleMode() != ShuffleMode.BATCH: 两个算子间的shuffle方式不等于批处理模式
+     *   upStreamVertex.getParallelism() == downStreamVertex.getParallelism(): 上下游算子实例的并行度相同
+     *   streamGraph.isChainingEnabled(): 用户没有禁用算子链
+     *
+     * Operator的ChainingStrategy chainingStrategy的选项：
+     *   ALWAYS: 算子会尽可能的Chain在一起
+     *   NEVER: 当前算子不会与前驱和后继算子进行Chain
+     *   HEAD: 当前算子允许被后继算子Chain，但不会与前驱算子进行Chain
+     *   HEAD_WITH_SOURCES: 与HEAD类似，但此策略会尝试Chain Source算子
+     */
     public static boolean isChainable(StreamEdge edge, StreamGraph streamGraph) {
         StreamNode downStreamVertex = streamGraph.getTargetVertex(edge);
 
+        // 下游的入边为1 && isChainableInput(edge, streamGraph)
         return downStreamVertex.getInEdges().size() == 1 && isChainableInput(edge, streamGraph);
     }
 

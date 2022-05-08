@@ -61,6 +61,7 @@ public class OneInputStreamTask<IN, OUT> extends StreamTask<OUT, OneInputStreamO
      * @param env The task environment for this task.
      */
     public OneInputStreamTask(Environment env) throws Exception {
+        // 构造函数初始化和StreamTask一样
         super(env);
     }
 

@@ -1145,6 +1145,9 @@ public class DataStream<T> {
     }
 
     /**
+     * map, filter, flatMap等函数都是调用的transform, 把transformation加入到transformations。
+     *      都是调的这个: getExecutionEnvironment().addOperator(resultTransform);
+     *
      * Method for passing user defined operators along with the type information that will transform
      * the DataStream.
      *

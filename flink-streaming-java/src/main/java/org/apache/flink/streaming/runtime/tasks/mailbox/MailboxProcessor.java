@@ -184,6 +184,7 @@ public class MailboxProcessor implements Closeable {
 
         final MailboxController defaultActionContext = new MailboxController(this);
 
+        // 它这个邮件模型怎么运行的还没看明白
         while (isMailboxLoopRunning()) {
             // The blocking `processMail` call will not return until default action is available.
             processMail(localMailbox, false);
@@ -304,6 +305,15 @@ public class MailboxProcessor implements Closeable {
             return processed;
         }
 
+        /**
+         * 如果没有默认行为，我们可以阻塞获取mail并运行，知道恢复默认位置
+         * scource task默认会一直阻塞在这，这个就不会影响sourceFunction的运行
+         * 当然也不会一直阻塞，checkpoint事件触发和checkpoint完成都会发邮件
+         *      Optional[checkpoint CheckpointMetaData{checkpointId=1, timestamp=1651995933082} with CheckpointOptions {checkpointType = CHECKPOINT, targetLocation = (default), isExactlyOnceMode = true, isUnalignedCheckpoint = false, alignmentTimeout = 9223372036854775807}]
+         *      Optional[checkpoint 1 complete]
+         *      checkpoint CheckpointMetaData{checkpointId=14, timestamp=1651996063085} with CheckpointOptions {checkpointType = CHECKPOINT, targetLocation = (default), isExactlyOnceMode = true, isUnalignedCheckpoint = false, alignmentTimeout = 9223372036854775807}
+         *      checkpoint 14 complete
+         */
         // If the default action is currently not available, we can run a blocking mailbox execution
         // until the default
         // action becomes available again.

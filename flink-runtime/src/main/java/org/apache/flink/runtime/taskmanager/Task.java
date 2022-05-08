@@ -399,6 +399,7 @@ public class Task
                 shuffleEnvironment.createShuffleIOOwnerContext(
                         taskNameWithSubtaskAndId, executionId, metrics.getIOMetricGroup());
 
+        // 一个Task的执行有输入也有输出： 关于输出的抽象： ResultPartition 和 ResultSubPartition（PipelinedSubpartition）
         // produced intermediate result partitions
         final ResultPartitionWriter[] resultPartitionWriters =
                 shuffleEnvironment
@@ -414,6 +415,11 @@ public class Task
                         jobId,
                         resultPartitionConsumableNotifier);
 
+        /**
+         * 一个Task的执行有输入也有输出： 关于输入的抽象： InputGate 和 InputChannel（从上游一个Task节点拉取数据）
+         * InputChannel 可能有两种实现： Local Remote
+         * 初始化 InputGate 和 InputChannel
+         */
         // consumed intermediate result partitions
         final IndexedInputGate[] gates =
                 shuffleEnvironment
@@ -437,6 +443,7 @@ public class Task
 
         invokableHasBeenCanceled = new AtomicBoolean(false);
 
+        // 初始化一个用来执行 Task 的线程，目标对象，就是 Task 自己
         // finally, create the executing thread, but do not start it
         executingThread = new Thread(TASK_THREADS_GROUP, this, taskNameWithSubtask);
     }
@@ -576,6 +583,13 @@ public class Task
         }
     }
 
+    /**
+     * Task 的状态周期：CREATED ---> DEPLOYING -----> RUNNING ----> FINISHED
+     * 内部通过反射来实例化 AbstractInvokable 的具体实例，最终跳转到 SourceStreamTask 的构造方法，同样，如果是非 SourceStreamTask 的话，则跳转到 OneInputStreamTask 的带 Environment 参数的构造方法。
+     * 任务运行就是调用invokable.invoke()方法
+     * @see org.apache.flink.streaming.runtime.tasks.StreamTask#invoke()
+     * task的运行逻辑看看StreamTask, SourceStreamTask, OneInputStreamTask的构造函数和invoke方法实现即可
+     */
     private void doRun() {
         // ----------------------------
         //  Initial State transition
@@ -583,6 +597,7 @@ public class Task
         while (true) {
             ExecutionState current = this.executionState;
             if (current == ExecutionState.CREATED) {
+                // 先更改 Task 的状态： CREATED ==> DEPLOYING
                 if (transitionState(ExecutionState.CREATED, ExecutionState.DEPLOYING)) {
                     // success, we can start our work
                     break;
@@ -633,6 +648,7 @@ public class Task
             LOG.info("Loading JAR files for task {}.", this);
 
             userCodeClassLoader = createUserCodeClassloader();
+            // 准备 ExecutionConfig
             final ExecutionConfig executionConfig =
                     serializedExecutionConfig.deserializeValue(userCodeClassLoader.asClassLoader());
 
@@ -659,8 +675,10 @@ public class Task
 
             LOG.info("Registering task at network: {}.", this);
 
+            // 初始化输入和输出组件, 拉起 ResultPartition 和 InputGate
             setupPartitionsAndGates(consumableNotifyingPartitionWriters, inputGates);
 
+            // 注册 输出
             for (ResultPartitionWriter partitionWriter : consumableNotifyingPartitionWriters) {
                 taskEventDispatcher.registerPartition(partitionWriter.getPartitionId());
             }
@@ -694,6 +712,7 @@ public class Task
             TaskKvStateRegistry kvStateRegistry =
                     kvStateService.createKvStateTaskRegistry(jobId, getJobVertexId());
 
+            // 初始 环境对象 RuntimeEnvironment, 包装在 Task 执行过程中需要的各种组件
             Environment env =
                     new RuntimeEnvironment(
                             jobId,
@@ -728,6 +747,11 @@ public class Task
             // so that it is available to the invokable during its entire lifetime.
             executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
 
+            /**
+             * 初始化 调用对象
+             * 通过反射实例化 StreamTask 实例
+             * 可能的子类： SourceStreamTask， OneInputStreamTask
+             */
             // now load and instantiate the task's invokable code
             invokable =
                     loadAndInstantiateInvokable(
@@ -741,6 +765,7 @@ public class Task
             // by the time we switched to running.
             this.invokable = invokable;
 
+            // 更改 Task 的状态： DEPLOYING ==> RUNNING
             // switch to the RUNNING state, if that fails, we have been canceled/failed in the
             // meantime
             if (!transitionState(ExecutionState.DEPLOYING, ExecutionState.RUNNING)) {
@@ -754,6 +779,7 @@ public class Task
             // make sure the user code classloader is accessible thread-locally
             executingThread.setContextClassLoader(userCodeClassLoader.asClassLoader());
 
+            // 真正把 Task 启动起来了
             // run the invokable
             invokable.invoke();
 
@@ -764,9 +790,11 @@ public class Task
             }
 
             // ----------------------------------------------------------------
+            //  成功完成执行
             //  finalization of a successful execution
             // ----------------------------------------------------------------
 
+            // StreamTask 需要正常结束，处理 buffer 中的数据
             // finish the produced partitions. if this fails, we consider the execution failed.
             for (ResultPartitionWriter partitionWriter : consumableNotifyingPartitionWriters) {
                 if (partitionWriter != null) {
@@ -774,6 +802,7 @@ public class Task
                 }
             }
 
+            // 更改 Task 的状态： RUNNING ==> FINISHED
             // try to mark the task as finished
             // if that fails, the task was canceled/failed in the meantime
             if (!transitionState(ExecutionState.RUNNING, ExecutionState.FINISHED)) {

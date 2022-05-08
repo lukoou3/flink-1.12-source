@@ -304,8 +304,10 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         super(environment);
 
         this.configuration = new StreamConfig(getTaskConfiguration());
+        // 创建 RecordWriter, 大概率是：ChannelSelectorRecordWriter， 也有可能是个BroadcastRecordWriter
         this.recordWriter = createRecordWriterDelegate(configuration, environment);
         this.actionExecutor = Preconditions.checkNotNull(actionExecutor);
+        // mailboxProcessor
         this.mailboxProcessor = new MailboxProcessor(this::processInput, mailbox, actionExecutor);
         this.mailboxProcessor.initMetric(environment.getMetricGroup());
         this.mainMailboxExecutor = mailboxProcessor.getMainMailboxExecutor();
@@ -314,10 +316,13 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                 Executors.newCachedThreadPool(
                         new ExecutorThreadFactory("AsyncOperations", uncaughtExceptionHandler));
 
+        // 创建 StateBackend，按照我们的配置，一般获取到的是 FsStateBackend
         this.stateBackend = createStateBackend();
 
+        // 初始化 SubtaskCheckpointCoordinatorImpl 实例，主要作用是通过 StateBackend 创建CheckpointStorage
         this.subtaskCheckpointCoordinator =
                 new SubtaskCheckpointCoordinatorImpl(
+                        // 创建 CheckpointStorage, 使用 FsStateBackend 的话，创建的就是FsCheckpointStorage
                         stateBackend.createCheckpointStorage(getEnvironment().getJobID()),
                         getName(),
                         actionExecutor,
@@ -387,6 +392,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     }
 
     /**
+     * 此方法实现任务的默认操作（例如，处理输入中的一个事件）。实现（通常）应该是非阻塞的。
      * This method implements the default action of the task (e.g. processing one event from the
      * input). Implementations should (in general) be non-blocking.
      *
@@ -395,6 +401,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
      * @throws Exception on any problems in the action.
      */
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
+        // inputProcessor = StreamOneInputProcessor
         InputStatus status = inputProcessor.processInput();
         if (status == InputStatus.MORE_AVAILABLE && recordWriter.isAvailable()) {
             return;
@@ -404,7 +411,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             return;
         }
         CompletableFuture<?> jointFuture = getInputOutputJointFuture(status);
+        // 停止默认行为
         MailboxDefaultAction.Suspension suspendedDefaultAction = controller.suspendDefaultAction();
+        // 恢复默认行为
         assertNoException(jointFuture.thenRun(suspendedDefaultAction::resume));
     }
 
@@ -519,9 +528,12 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         disposedOperators = false;
         LOG.debug("Initializing {}.", getName());
 
+        // 初始化 OperatorChain
         operatorChain = new OperatorChain<>(this, recordWriter);
+        // 获取 main Operator, 一个接一个调用，从前到后，和spark相反
         mainOperator = operatorChain.getMainOperator();
 
+        // 子类实现，执行自己的初始化
         // task specific initialization
         init();
 
@@ -533,6 +545,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
         // -------- Invoke --------
         LOG.debug("Invoking {}", getName());
 
+        // 初始化状态
         // we need to make sure that any triggers scheduled in open() cannot be
         // executed before all operators are opened
         actionExecutor.runThrowing(
@@ -575,6 +588,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
     @Override
     public final void invoke() throws Exception {
         try {
+            // task init 操作
             beforeInvoke();
 
             // final check to exit early before starting to run
@@ -582,6 +596,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                 throw new CancelTaskException();
             }
 
+            // task不断循环运行，运行邮件循环
             // let the task do its work
             runMailboxLoop();
 
@@ -591,6 +606,7 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
                 throw new CancelTaskException();
             }
 
+            // task结束，做些清理工作
             afterInvoke();
         } catch (Throwable invokeException) {
             failing = !canceled;
@@ -882,6 +898,11 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             CheckpointMetaData checkpointMetaData, CheckpointOptions checkpointOptions) {
 
         CompletableFuture<Boolean> result = new CompletableFuture<>();
+        /**
+         * 提交Checkpoint事件
+         * 提交Checkpoint完成的事件在，TaskExecutor的rpc接口由jobManage调用
+         * @see org.apache.flink.runtime.taskexecutor.TaskExecutor#confirmCheckpoint
+         */
         mainMailboxExecutor.execute(
                 () -> {
                     try {

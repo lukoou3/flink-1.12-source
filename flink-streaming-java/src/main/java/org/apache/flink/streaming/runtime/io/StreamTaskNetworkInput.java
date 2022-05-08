@@ -152,6 +152,9 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
         this.inputIndex = inputIndex;
     }
 
+    /**
+     * 非soureTask处理元素的方法
+     */
     @Override
     public InputStatus emitNext(DataOutput<T> output) throws Exception {
 
@@ -160,6 +163,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
             if (currentRecordDeserializer != null) {
                 DeserializationResult result;
                 try {
+                    // 从字节缓冲区中反序列化出result
                     result = currentRecordDeserializer.getNextRecord(deserializationDelegate);
                 } catch (IOException e) {
                     throw new IOException(
@@ -171,6 +175,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
                 }
 
                 if (result.isFullRecord()) {
+                    // 处理元素
                     processElement(deserializationDelegate.getInstance(), output);
                     return InputStatus.MORE_AVAILABLE;
                 }
@@ -201,8 +206,10 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 
     private void processElement(StreamElement recordOrMark, DataOutput<T> output) throws Exception {
         if (recordOrMark.isRecord()) {
+            // 元素
             output.emitRecord(recordOrMark.asRecord());
         } else if (recordOrMark.isWatermark()) {
+            // Watermark
             statusWatermarkValve.inputWatermark(
                     recordOrMark.asWatermark(), flattenedChannelIndices.get(lastChannel), output);
         } else if (recordOrMark.isLatencyMarker()) {

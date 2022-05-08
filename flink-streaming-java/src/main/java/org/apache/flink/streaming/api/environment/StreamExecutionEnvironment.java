@@ -1811,7 +1811,17 @@ public class StreamExecutionEnvironment {
          *      spark的分区迭代和flink的正好相反, flink是从前往后调用, 而spark则是从后往前调用。
          *      spark的代码实现比flink少的多，flink的跳来跳去中间用的类也比较多, 比spark复杂的多。
          *
+         * StreamMap,StreamFilter, StreamFlatMap比较简单, 但可以实现大部分功能;
+         * AsyncWaitOperator比较复杂有缓冲的功能, 要是把这个看懂了, flink基本就用的比较好了。
          *
+         * org.apache.flink.streaming.runtime.tasks.mailbox.MailboxProcessor
+         * 运行时间循环runMailboxLoop(), 事件循环:把元素放入到异步函数, 获取回调后放入队列的元素, 单个线程在循环
+         *
+         * StreamTask的主要实现类:
+         *    SourceStreamTask: 一般就是包含source的第一个chain
+         *    OneInputStreamTask: map, filter等常见的作为chain的第一个Operator, AsyncWaitOperator总是(它的chainingStrategy是HEAD)
+         *    TwoInputStreamTask: union, join
+         *    MultipleInputStreamTask: 超过两个
          */
         return execute(getStreamGraph(jobName));
     }

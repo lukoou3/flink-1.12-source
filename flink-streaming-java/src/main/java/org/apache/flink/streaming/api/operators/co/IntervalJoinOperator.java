@@ -82,6 +82,8 @@ import java.util.Objects;
  * @param <T1> The type of the elements in the left stream.
  * @param <T2> The type of the elements in the right stream.
  * @param <OUT> The output type created by the user-defined function.
+ *
+ * IntervalJoin的实现, 看这个实现类的代码, 它还是挺消耗资源的
  */
 @Internal
 public class IntervalJoinOperator<K, T1, T2, OUT>
@@ -92,9 +94,12 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
 
     private static final Logger logger = LoggerFactory.getLogger(IntervalJoinOperator.class);
 
+    // StateDescriptor的name
     private static final String LEFT_BUFFER = "LEFT_BUFFER";
     private static final String RIGHT_BUFFER = "RIGHT_BUFFER";
+    // internalTimerService的name
     private static final String CLEANUP_TIMER_NAME = "CLEANUP_TIMER";
+    // registerEventTimeTimer的namespace
     private static final String CLEANUP_NAMESPACE_LEFT = "CLEANUP_LEFT";
     private static final String CLEANUP_NAMESPACE_RIGHT = "CLEANUP_RIGHT";
 
@@ -104,6 +109,7 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
     private final TypeSerializer<T1> leftTypeSerializer;
     private final TypeSerializer<T2> rightTypeSerializer;
 
+    // 两个流中元素的状态
     private transient MapState<Long, List<BufferEntry<T1>>> leftBuffer;
     private transient MapState<Long, List<BufferEntry<T2>>> rightBuffer;
 
@@ -191,6 +197,7 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
      */
     @Override
     public void processElement1(StreamRecord<T1> record) throws Exception {
+        // 处理左流
         processElement(record, leftBuffer, rightBuffer, lowerBound, upperBound, true);
     }
 
@@ -205,6 +212,7 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
      */
     @Override
     public void processElement2(StreamRecord<T2> record) throws Exception {
+        // 处理右流
         processElement(record, rightBuffer, leftBuffer, -upperBound, -lowerBound, false);
     }
 
@@ -217,30 +225,36 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
             final long relativeUpperBound,
             final boolean isLeft)
             throws Exception {
-
+        // 当前元素, 此次输入的元素
         final THIS ourValue = record.getValue();
+        // 当前元素的时间戳
         final long ourTimestamp = record.getTimestamp();
 
+        // 必须使用事件时间
         if (ourTimestamp == Long.MIN_VALUE) {
             throw new FlinkException(
                     "Long.MIN_VALUE timestamp: Elements used in "
                             + "interval stream joins need to have timestamps meaningful timestamps.");
         }
 
+        // 迟到数据直接忽略
         if (isLate(ourTimestamp)) {
             return;
         }
 
+        // 添加到状态中, MapState<Long, List<BufferEntry<T1>>> leftBuffer中key就是数据的时间戳
         addToBuffer(ourBuffer, ourValue, ourTimestamp);
 
         for (Map.Entry<Long, List<BufferEntry<OTHER>>> bucket : otherBuffer.entries()) {
             final long timestamp = bucket.getKey();
 
+            // 判断join的条件
             if (timestamp < ourTimestamp + relativeLowerBound
                     || timestamp > ourTimestamp + relativeUpperBound) {
                 continue;
             }
 
+            // 输出数据
             for (BufferEntry<OTHER> entry : bucket.getValue()) {
                 if (isLeft) {
                     collect((T1) ourValue, (T2) entry.element, ourTimestamp, timestamp);
@@ -252,7 +266,9 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
 
         long cleanupTime =
                 (relativeUpperBound > 0L) ? ourTimestamp + relativeUpperBound : ourTimestamp;
+        // 注册的时间就是当前元素需要被清理的时间。这岂不是每来个元素都需要注册定时器, 这很浪费资源吧
         if (isLeft) {
+            // 注册的是事件时间
             internalTimerService.registerEventTimeTimer(CLEANUP_NAMESPACE_LEFT, cleanupTime);
         } else {
             internalTimerService.registerEventTimeTimer(CLEANUP_NAMESPACE_RIGHT, cleanupTime);
@@ -298,9 +314,11 @@ public class IntervalJoinOperator<K, T1, T2, OUT>
         switch (namespace) {
             case CLEANUP_NAMESPACE_LEFT:
                 {
+                    // 从定时器的时间可以推算出元素的时间戳
                     long timestamp =
                             (upperBound <= 0L) ? timerTimestamp : timerTimestamp - upperBound;
                     logger.trace("Removing from left buffer @ {}", timestamp);
+                    // 把数据从MapState中删除
                     leftBuffer.remove(timestamp);
                     break;
                 }

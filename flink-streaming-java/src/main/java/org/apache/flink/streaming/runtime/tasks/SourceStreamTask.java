@@ -78,12 +78,15 @@ public class SourceStreamTask<
                 null,
                 FatalExitExceptionHandler.INSTANCE,
                 StreamTaskActionExecutor.synchronizedExecutor(lock));
+        // SourceStreamTask多个lock
         this.lock = Preconditions.checkNotNull(lock);
+        // SourceStreamTask和其他StreamTask的区别就是多个一个线程用来调用sourceFunction接收数据
         this.sourceThread = new LegacySourceFunctionThread();
     }
 
     @Override
     protected void init() {
+        // 这就是我们写的SourceFunction
         // we check if the source is actually inducing the checkpoints, rather
         // than the trigger
         SourceFunction<?> source = mainOperator.getUserFunction();
@@ -148,9 +151,10 @@ public class SourceStreamTask<
 
     @Override
     protected void processInput(MailboxDefaultAction.Controller controller) throws Exception {
-
+        // 看注释是停止默认行为，不会再调用这个方法了，sourceThread不会多次start
         controller.suspendDefaultAction();
 
+        // 启动sourceThread，接收source数据
         // Against the usual contract of this method, this implementation is not step-wise but
         // blocking instead for
         // compatibility reasons with the current source interface (source functions run as a loop,
@@ -264,6 +268,7 @@ public class SourceStreamTask<
         @Override
         public void run() {
             try {
+                // 运行SourceFunction
                 mainOperator.run(lock, getStreamStatusMaintainer(), operatorChain);
                 if (!wasStoppedExternally && !isCanceled()) {
                     synchronized (lock) {

@@ -32,6 +32,7 @@ import org.apache.flink.annotation.PublicEvolving;
 public enum ChainingStrategy {
 
     /**
+     * 算子会尽可能的Chain在一起
      * Operators will be eagerly chained whenever possible.
      *
      * <p>To optimize performance, it is generally a good practice to allow maximal chaining and
@@ -39,16 +40,20 @@ public enum ChainingStrategy {
      */
     ALWAYS,
 
-    /** The operator will not be chained to the preceding or succeeding operators. */
+    /**
+     * 当前算子不会与前驱和后继算子进行Chain
+     * The operator will not be chained to the preceding or succeeding operators. */
     NEVER,
 
     /**
+     * 当前算子允许被后继算子Chain，但不会与前驱算子进行Chain
      * The operator will not be chained to the predecessor, but successors may chain to this
      * operator.
      */
     HEAD,
 
     /**
+     * 与HEAD类似，但此策略会尝试Chain Source算子
      * This operator will run at the head of a chain (similar as in {@link #HEAD}, but it will
      * additionally try to chain source inputs if possible. This allows multi-input operators to be
      * chained with multiple sources into one task.
