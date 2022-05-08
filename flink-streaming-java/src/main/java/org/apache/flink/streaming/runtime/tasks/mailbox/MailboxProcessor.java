@@ -313,6 +313,10 @@ public class MailboxProcessor implements Closeable {
          *      Optional[checkpoint 1 complete]
          *      checkpoint CheckpointMetaData{checkpointId=14, timestamp=1651996063085} with CheckpointOptions {checkpointType = CHECKPOINT, targetLocation = (default), isExactlyOnceMode = true, isUnalignedCheckpoint = false, alignmentTimeout = 9223372036854775807}
          *      checkpoint 14 complete
+         *
+         * OneInputStreamTask中没有数据输入时这个也会阻塞，当上游有数据写入时，回调DefaultActionSuspension#resume()，解除阻塞
+         * 看下StreamTask#processInput可知道，如果没有更多数据时会停止默认行为，然后再可读事件上注册一个回调函数，调用DefaultActionSuspension#resume()
+         * 发送"resume default action"解除阻塞
          */
         // If the default action is currently not available, we can run a blocking mailbox execution
         // until the default
@@ -416,6 +420,7 @@ public class MailboxProcessor implements Closeable {
                 resumeInternal();
             } else {
                 try {
+                    // 停止阻塞
                     sendControlMail(this::resumeInternal, "resume default action");
                 } catch (MailboxClosedException ex) {
                     // Ignored

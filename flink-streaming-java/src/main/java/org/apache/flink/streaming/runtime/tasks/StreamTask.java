@@ -34,6 +34,7 @@ import org.apache.flink.runtime.checkpoint.channel.SequentialChannelStateReader;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
+import org.apache.flink.runtime.io.AvailabilityProvider;
 import org.apache.flink.runtime.io.network.api.CancelCheckpointMarker;
 import org.apache.flink.runtime.io.network.api.writer.MultipleRecordWriters;
 import org.apache.flink.runtime.io.network.api.writer.NonRecordWriter;
@@ -410,10 +411,19 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
             controller.allActionsCompleted();
             return;
         }
+        /**
+         * 有新数据写入，看了半天没发现这个Future是在哪设置完成的，后来找到了
+         * 最后在CompletableFuture的complete打断点发现是在SingleInputGate#queueChannel的notification的close中调用GateNotificationHelper#close()
+         * 不知咋的回调函数和complete函数是在一个函数调用的，但是回调函数断点的调用栈不显示之前的代码，不知道是不是jvm实现的原因
+         *
+         * @see AvailabilityProvider.AvailabilityHelper#getAvailableFuture()
+         * @see org.apache.flink.runtime.io.network.partition.consumer.GateNotificationHelper#close()
+         * @see org.apache.flink.runtime.io.network.partition.consumer.GateNotificationHelper#notifyDataAvailable()
+         */
         CompletableFuture<?> jointFuture = getInputOutputJointFuture(status);
         // 停止默认行为
         MailboxDefaultAction.Suspension suspendedDefaultAction = controller.suspendDefaultAction();
-        // 恢复默认行为
+        // 有新数据写入，恢复默认行为
         assertNoException(jointFuture.thenRun(suspendedDefaultAction::resume));
     }
 
