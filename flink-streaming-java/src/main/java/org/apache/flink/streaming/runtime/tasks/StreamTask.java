@@ -45,6 +45,7 @@ import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.api.writer.SingleRecordWriter;
 import org.apache.flink.runtime.io.network.partition.ChannelStateHolder;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGate;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
@@ -55,6 +56,7 @@ import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.state.StateBackendLoader;
 import org.apache.flink.runtime.state.ttl.TtlTimeProvider;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
+import org.apache.flink.runtime.taskmanager.InputGateWithMetrics;
 import org.apache.flink.runtime.util.ExecutorThreadFactory;
 import org.apache.flink.runtime.util.FatalExitExceptionHandler;
 import org.apache.flink.streaming.api.TimeCharacteristic;
@@ -66,8 +68,11 @@ import org.apache.flink.streaming.api.operators.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializerImpl;
+import org.apache.flink.streaming.runtime.io.CheckpointedInputGate;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
 import org.apache.flink.streaming.runtime.io.StreamInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamOneInputProcessor;
+import org.apache.flink.streaming.runtime.io.StreamTaskNetworkInput;
 import org.apache.flink.streaming.runtime.partitioner.ConfigurableStreamPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -103,6 +108,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 
 import static org.apache.flink.runtime.concurrent.FutureUtils.assertNoException;
+import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput.DataOutput;
 
 /**
  * Base class for all streaming tasks. A task is the unit of local processing that is deployed and
@@ -394,6 +400,30 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
 
     /**
      * 此方法实现任务的默认操作（例如，处理输入中的一个事件）。实现（通常）应该是非阻塞的。
+     * 从SingleInputGate读取数据调用的流程如下：
+     * @see StreamOneInputProcessor#processInput()
+     * @see StreamTaskNetworkInput#emitNext(DataOutput output)
+     * @see CheckpointedInputGate#pollNext()
+     * @see InputGateWithMetrics#pollNext()
+     * @see SingleInputGate#pollNext()
+     *
+     * 处理每条数据在StreamTaskNetworkInput#emitNext(DataOutput output)中调用processElement(deserializationDelegate.getInstance(), output);
+     * @see StreamTaskNetworkInput#emitNext(DataOutput output)
+     * @see StreamTaskNetworkInput#processElement 处理元素(Record/Watermark)
+     *      当是元素时：output.emitRecord(recordOrMark.asRecord())，实际调用的是:
+     *      @see OneInputStreamTask.StreamTaskNetworkOutput#emitRecord
+     *      emitRecord方法中调用第一个operator的processElement: operator.processElement(record)
+     *      然后就是一个一个operator的调用，最后输出元素
+     *
+     * 此方法中inputProcessor.processInput()返回的InputStatus会提示当前是否还有元素
+     *      如果当前还有元素直接返回，接下里循环继续处理下一个元素
+     *      如果当前没有元素了，则提示mailbox停止默认行为(StreamTask.processInput)，并且注册回调函数当有数据可读时恢复默认行为(StreamTask.processInput)
+     *      MailboxController#suspendDefaultAction()停止默认行为时会给mailbox发送"signal check"，使processMail能进入事件处理，并且阻塞知道有数据可读
+     *
+     * MailboxProcessor#runMailboxLoop方法处理邮件循环时，不停的调用MailboxProcessor#processMail(处理mail事件)好StreamTask.processInput(处理输入元素)
+     * operator chain处理元素和mailbox处理事件是在一个线程运行的，不用考虑线程安全问题。非source task都是这样。
+     * source task中有额外的线程处理输入元素，加了一个lock。
+     *
      * This method implements the default action of the task (e.g. processing one event from the
      * input). Implementations should (in general) be non-blocking.
      *

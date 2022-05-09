@@ -184,7 +184,12 @@ public class MailboxProcessor implements Closeable {
 
         final MailboxController defaultActionContext = new MailboxController(this);
 
-        // 它这个邮件模型怎么运行的还没看明白
+        /**
+         * 它这个邮件模型怎么运行的还没看明白。
+         * 现在大概明白了。
+         * 就是在一个线程中不停的处理输入元素和mailbox中的事件，当没有数据输入时，isDefaultActionUnavailable方法返回true，循环会阻塞获取mailbox中的事件，保证不消耗cpu
+         * 有新数据输入时会给mailbox中放入事件，isDefaultActionUnavailable方法返回false，重新恢复处理输入元素
+         */
         while (isMailboxLoopRunning()) {
             // The blocking `processMail` call will not return until default action is available.
             processMail(localMailbox, false);
@@ -306,7 +311,7 @@ public class MailboxProcessor implements Closeable {
         }
 
         /**
-         * 如果没有默认行为，我们可以阻塞获取mail并运行，知道恢复默认位置
+         * 如果没有默认行为(StreamTask.processInput)，我们可以阻塞获取mail并运行，直到恢复默认位置
          * scource task默认会一直阻塞在这，这个就不会影响sourceFunction的运行
          * 当然也不会一直阻塞，checkpoint事件触发和checkpoint完成都会发邮件
          *      Optional[checkpoint CheckpointMetaData{checkpointId=1, timestamp=1651995933082} with CheckpointOptions {checkpointType = CHECKPOINT, targetLocation = (default), isExactlyOnceMode = true, isUnalignedCheckpoint = false, alignmentTimeout = 9223372036854775807}]
@@ -315,7 +320,7 @@ public class MailboxProcessor implements Closeable {
          *      checkpoint 14 complete
          *
          * OneInputStreamTask中没有数据输入时这个也会阻塞，当上游有数据写入时，回调DefaultActionSuspension#resume()，解除阻塞
-         * 看下StreamTask#processInput可知道，如果没有更多数据时会停止默认行为，然后再可读事件上注册一个回调函数，调用DefaultActionSuspension#resume()
+         * 看下StreamTask#processInput可知道，如果没有更多数据时会停止默认行为(StreamTask.processInput)，然后再可读事件上注册一个回调函数，调用DefaultActionSuspension#resume()
          * 发送"resume default action"解除阻塞
          */
         // If the default action is currently not available, we can run a blocking mailbox execution
@@ -336,6 +341,7 @@ public class MailboxProcessor implements Closeable {
     }
 
     /**
+     * 调用此方法表示邮箱线程应该（暂时）停止调用默认操作(StreamTask.processInput)，例如，因为当前没有可用的输入。
      * Calling this method signals that the mailbox-thread should (temporarily) stop invoking the
      * default action, e.g. because there is currently no input available.
      */
@@ -347,6 +353,12 @@ public class MailboxProcessor implements Closeable {
 
         if (suspendedDefaultAction == null) {
             suspendedDefaultAction = new DefaultActionSuspension();
+            /**
+             * 当前没有数据输入，使processMail进入事件处理，使之后能够阻塞等待有数据输入
+             *     if (!mailbox.hasMail()) {
+             *          sendControlMail(() -> {}, "signal check");
+             *     }
+             */
             ensureControlFlowSignalCheck();
         }
 

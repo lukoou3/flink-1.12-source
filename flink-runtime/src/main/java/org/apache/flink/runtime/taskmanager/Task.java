@@ -39,6 +39,7 @@ import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.deployment.InputGateDeploymentDescriptor;
 import org.apache.flink.runtime.deployment.ResultPartitionDeploymentDescriptor;
+import org.apache.flink.runtime.deployment.TaskDeploymentDescriptorFactory;
 import org.apache.flink.runtime.execution.CancelTaskException;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.execution.ExecutionState;
@@ -57,6 +58,7 @@ import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNo
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
+import org.apache.flink.runtime.io.network.partition.consumer.SingleInputGateFactory;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
@@ -419,6 +421,12 @@ public class Task
          * 一个Task的执行有输入也有输出： 关于输入的抽象： InputGate 和 InputChannel（从上游一个Task节点拉取数据）
          * InputChannel 可能有两种实现： Local Remote
          * 初始化 InputGate 和 InputChannel
+         *
+         * 大小在job编译时就确定了：inputEdges.length
+         * @see TaskDeploymentDescriptorFactory#createInputGateDeploymentDescriptors()
+         *
+         * local还是remote
+         * @see SingleInputGateFactory#createKnownInputChannel
          */
         // consumed intermediate result partitions
         final IndexedInputGate[] gates =

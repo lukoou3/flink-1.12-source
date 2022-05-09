@@ -159,6 +159,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
     public InputStatus emitNext(DataOutput<T> output) throws Exception {
 
         while (true) {
+            // 从deserializer获取到了元素
             // get the stream element from the deserializer
             if (currentRecordDeserializer != null) {
                 DeserializationResult result;
@@ -177,18 +178,23 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
                 if (result.isFullRecord()) {
                     // 处理元素
                     processElement(deserializationDelegate.getInstance(), output);
+                    // 提示下来还有数据
                     return InputStatus.MORE_AVAILABLE;
                 }
             }
 
+            // 从InputGate非阻塞的读取buffer或者event
             Optional<BufferOrEvent> bufferOrEvent = checkpointedInputGate.pollNext();
+            // 有元素，相当于scala Option的isDefined
             if (bufferOrEvent.isPresent()) {
                 // return to the mailbox after receiving a checkpoint barrier to avoid processing of
                 // data after the barrier before checkpoint is performed for unaligned checkpoint
                 // mode
                 if (bufferOrEvent.get().isBuffer()) {
+                    // 处理buffer，之后继续循环判断，可能读到完整的元素
                     processBuffer(bufferOrEvent.get());
                 } else {
+                    // 是事件的话处理事件，返回提示下来还有数据
                     processEvent(bufferOrEvent.get());
                     return InputStatus.MORE_AVAILABLE;
                 }
@@ -199,6 +205,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
                             "Finished BarrierHandler should be available");
                     return InputStatus.END_OF_INPUT;
                 }
+                // 提示没有数据
                 return InputStatus.NOTHING_AVAILABLE;
             }
         }
@@ -206,7 +213,7 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 
     private void processElement(StreamElement recordOrMark, DataOutput<T> output) throws Exception {
         if (recordOrMark.isRecord()) {
-            // 元素
+            // 元素，接下来就是一个一个operator的调用
             output.emitRecord(recordOrMark.asRecord());
         } else if (recordOrMark.isWatermark()) {
             // Watermark

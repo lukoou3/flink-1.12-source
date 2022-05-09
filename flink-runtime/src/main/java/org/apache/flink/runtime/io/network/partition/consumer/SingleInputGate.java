@@ -146,7 +146,10 @@ public class SingleInputGate extends IndexedInputGate {
     @GuardedBy("requestLock")
     private final InputChannel[] channels;
 
-    /** Channels, which notified this input gate about available data. */
+    /**
+     * 通知这个input gate数据可用的Channels
+     * Channels, which notified this input gate about available data.
+     */
     private final PrioritizedDeque<InputChannel> inputChannelsWithData = new PrioritizedDeque<>();
 
     /**

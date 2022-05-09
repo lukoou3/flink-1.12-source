@@ -52,6 +52,7 @@ public class PipelinedSubpartitionView implements ResultSubpartitionView {
 
     @Override
     public void notifyDataAvailable() {
+        // 通知有数据了，local模式availabilityListener是LocalInputChannel
         availabilityListener.notifyDataAvailable();
     }
 

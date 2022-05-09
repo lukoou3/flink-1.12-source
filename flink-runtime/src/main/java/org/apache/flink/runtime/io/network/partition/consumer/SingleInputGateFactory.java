@@ -205,6 +205,7 @@ public class SingleInputGateFactory {
         if (inputChannelDescriptor.isLocalTo(taskExecutorResourceId)) {
             // Consuming task is deployed to the same TaskManager as the partition => local
             channelStatistics.numLocalChannels++;
+            // 上下游在相同节点，使用local模式。本地测试一直都是这个
             return new LocalRecoveredInputChannel(
                     inputGate,
                     index,
