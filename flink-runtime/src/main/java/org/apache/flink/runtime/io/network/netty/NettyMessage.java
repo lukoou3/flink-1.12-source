@@ -168,6 +168,11 @@ public abstract class NettyMessage {
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
                 throws IOException {
             if (msg instanceof NettyMessage) {
+                /**
+                 * 写入FRAME_HEADER_LENGTH = 4 + 4 + 1; // frame length (4), magic number (4), msg ID (1)
+                 * 再写入content
+                 * 暂时没啥好看的，都是些判断处理
+                 */
                 ((NettyMessage) msg).write(ctx, promise, ctx.alloc());
             } else {
                 ctx.write(msg, promise);
@@ -206,13 +211,17 @@ public abstract class NettyMessage {
             try {
                 int magicNumber = msg.readInt();
 
+
+                // 魔术数字不匹配
                 if (magicNumber != MAGIC_NUMBER) {
                     throw new IllegalStateException(
                             "Network stream corrupted: received incorrect magic number.");
                 }
 
+                // 消息类型id
                 byte msgId = msg.readByte();
 
+                // 根据消息类型解析Message
                 final NettyMessage decodedMsg;
                 switch (msgId) {
                     case PartitionRequest.ID:
@@ -249,6 +258,7 @@ public abstract class NettyMessage {
 
     // ------------------------------------------------------------------------
     // Server responses
+    // 服务端的responses，就两种类型：BufferResponse(Buffer响应消息)和ErrorResponse(错误响应消息)
     // ------------------------------------------------------------------------
 
     static class BufferResponse extends NettyMessage {

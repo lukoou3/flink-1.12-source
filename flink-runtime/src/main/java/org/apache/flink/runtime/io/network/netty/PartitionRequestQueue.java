@@ -46,6 +46,9 @@ import java.util.function.Consumer;
 import static org.apache.flink.runtime.io.network.netty.NettyMessage.BufferResponse;
 
 /**
+ * 分区队列的非空读取器，在写入和刷新{@link Buffer}实例之前侦听通道可写性更改事件
+ * 继承的是ChannelInboundHandlerAdapter，没重写channelRead，channelRead默认直接发到下游
+ *
  * A nonEmptyReader of partition queues, which listens for channel writability changed events before
  * writing and flushing {@link Buffer} instances.
  */

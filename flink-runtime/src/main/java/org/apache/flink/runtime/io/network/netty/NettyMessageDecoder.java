@@ -32,7 +32,7 @@ abstract class NettyMessageDecoder implements AutoCloseable {
     /** Length of the message under decoding. */
     protected int messageLength;
 
-    /** The result of decoding one {@link ByteBuf}. */
+    /** The result of decoding one {@liNettyMessageEncodernk ByteBuf}. */
     static class DecodingResult {
         static final DecodingResult NOT_FINISHED = new DecodingResult(false, null);
 

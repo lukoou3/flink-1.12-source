@@ -48,9 +48,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
+ * 通道处理程序读取来自生产者的缓冲响应或错误响应消息，为生产者写入和刷新未通知的信用。
  * Channel handler to read the messages of buffer response or error response from the producer, to
  * write and flush the unannounced credits for the producer.
  *
+ * 它用于新的基于网络信用的模式。
  * <p>It is used in the new network credit-based mode.
  */
 class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdapter
@@ -281,6 +283,12 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
         }
     }
 
+
+    /**
+     *
+     * 最初发过来的就两种类型：BufferResponse和ErrorResponse
+     * BufferResponse可以进一步被解码成BufferOrEvent
+     */
     private void decodeMsg(Object msg) throws Throwable {
         final Class<?> msgClazz = msg.getClass();
 
@@ -289,6 +297,10 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
             NettyMessage.BufferResponse bufferOrEvent = (NettyMessage.BufferResponse) msg;
 
             RemoteInputChannel inputChannel = inputChannels.get(bufferOrEvent.receiverId);
+            /**
+             * inputChannel不需要了，提示服务端不在请求PartitionRequest
+             * ctx.writeAndFlush(new NettyMessage.CancelPartitionRequest(inputChannelId))
+             */
             if (inputChannel == null || inputChannel.isReleased()) {
                 bufferOrEvent.releaseBuffer();
 

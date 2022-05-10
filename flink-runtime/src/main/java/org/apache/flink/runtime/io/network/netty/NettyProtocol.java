@@ -78,9 +78,10 @@ public class NettyProtocol {
                 new PartitionRequestServerHandler(
                         partitionProvider, taskEventPublisher, queueOfPartitionQueues);
 
+        // 主要就是 serverHandler 和 queueOfPartitionQueues，flink的netty不用处理rpc，逻辑相对简单点
         return new ChannelHandler[] {
-            messageEncoder,
-            new NettyMessage.NettyMessageDecoder(),
+            messageEncoder, // Encoder
+            new NettyMessage.NettyMessageDecoder(), // Decoder
             serverHandler,
             queueOfPartitionQueues
         };
@@ -119,11 +120,12 @@ public class NettyProtocol {
      * @return channel handlers
      */
     public ChannelHandler[] getClientChannelHandlers() {
+        // client的ClientHandler，客户端的处理逻辑主要在CreditBasedPartitionRequestClientHandler，CreditBasedPartitionRequestClientHandler.decodeMsg
         NetworkClientHandler networkClientHandler = new CreditBasedPartitionRequestClientHandler();
 
         return new ChannelHandler[] {
-            messageEncoder,
-            new NettyMessageClientDecoderDelegate(networkClientHandler),
+            messageEncoder, // Encoder
+            new NettyMessageClientDecoderDelegate(networkClientHandler), // Decoder
             networkClientHandler
         };
     }

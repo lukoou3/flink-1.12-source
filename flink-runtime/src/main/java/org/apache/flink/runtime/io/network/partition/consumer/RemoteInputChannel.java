@@ -443,6 +443,10 @@ public class RemoteInputChannel extends InputChannel {
         }
     }
 
+    /**
+     *
+     * 下游收到上游发的数据
+     */
     public void onBuffer(Buffer buffer, int sequenceNumber, int backlog) throws IOException {
         boolean recycleBuffer = true;
 
@@ -490,6 +494,8 @@ public class RemoteInputChannel extends InputChannel {
             if (firstPriorityEvent) {
                 notifyPriorityEvent(sequenceNumber);
             }
+
+            // receivedBuffers之前为空现在有数据了，通知可以消费了，解除阻塞
             if (wasEmpty) {
                 notifyChannelNonEmpty();
             }

@@ -169,6 +169,11 @@ class NettyClient {
     // Client connections
     // ------------------------------------------------------------------------
 
+    /**
+     * 每个客服端的连接
+     * ChannelHandler:
+     * @see NettyProtocol#getClientChannelHandlers()
+     */
     ChannelFuture connect(final InetSocketAddress serverSocketAddress) {
         checkState(bootstrap != null, "Client has not been initialized yet.");
 
@@ -176,6 +181,7 @@ class NettyClient {
         // Child channel pipeline for accepted connections
         // --------------------------------------------------------------------
 
+        // 这个每次连接都会调用?
         bootstrap.handler(
                 new ChannelInitializer<SocketChannel>() {
                     @Override

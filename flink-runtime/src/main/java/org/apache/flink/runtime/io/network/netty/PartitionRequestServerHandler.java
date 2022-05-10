@@ -37,7 +37,10 @@ import org.slf4j.LoggerFactory;
 import static org.apache.flink.runtime.io.network.netty.NettyMessage.PartitionRequest;
 import static org.apache.flink.runtime.io.network.netty.NettyMessage.TaskEventRequest;
 
-/** Channel handler to initiate data transfers and dispatch backwards flowing task events. */
+/**
+ * 通道处理程序，用于启动数据传输和调度向后流动的任务事件。
+ * Channel handler to initiate data transfers and dispatch backwards flowing task events.
+ */
 class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PartitionRequestServerHandler.class);
@@ -73,15 +76,29 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
         try {
             Class<?> msgClazz = msg.getClass();
 
+            // 类似spark中的偏函数，分情况处理，这里就没用rpc实现的动态代理
             // ----------------------------------------------------------------
+            // 请求Partition数据
             // Intermediate result partition requests
             // ----------------------------------------------------------------
             if (msgClazz == PartitionRequest.class) {
+                // 下游请求Partition数据
                 PartitionRequest request = (PartitionRequest) msg;
 
                 LOG.debug("Read channel on {}: {}.", ctx.channel().localAddress(), request);
 
                 try {
+                    /**
+                     * 1、接收到客户端的PartitionRequest之后，会给这个请求创建一个reader，在这里我们只看基于Credit的CreditBasedSequenceNumberingViewReader，
+                     * 每个reader都有一个初始凭据credit，值等于消费端RemoteInputChannel的独占buffer数。
+                     * 2、这个reader随后会创建一个ResultSubpartitionView，reader就是通过这个ResultSubpartitionView来从对应的ResultSubpartition里读取数据，
+                     * 在实时计算里，这个ResultSubpartitionView是PipelinedSubpartitionView的实例。
+                     *
+                     * 3、我们可以分析一下，一个上游（Map）任务对应一个ResultPartition，每个ResultPartition有多个ResultSubPartition，每个ResultSubPartition对应一个下游（Reduce）任务，每个下游任务都会来请求ResultPartition里的一个ResultSubPartition。
+                     * 比如有10个ResultSubPartition，就有10个Reduce任务，每个Reduce发起一个PartitionRequest，Map端就会创建10个reader，每个reader读取一个ResultSubPartition。
+                     *
+                     * 这里并没有实际返回数据，下游请求ResultSubPartition数据后，上游会主动向下游发送数据，flink数据传输采用的push的方式，这个和spark不同，这是流处理和批处理的特性确定的
+                     */
                     NetworkSequenceViewReader reader;
                     reader =
                             new CreditBasedSequenceNumberingViewReader(
@@ -96,6 +113,7 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
                 }
             }
             // ----------------------------------------------------------------
+            // 下面都是PartitionRequest相关的事件
             // Task events
             // ----------------------------------------------------------------
             else if (msgClazz == TaskEventRequest.class) {

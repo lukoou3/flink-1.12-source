@@ -650,6 +650,10 @@ public class SingleInputGate extends IndexedInputGate {
                 }
 
                 final InputChannel inputChannel = inputChannelOpt.get();
+                /**
+                 * LocalInputChannel和RemoteInputChannel
+                 * RemoteInputChannel是从receivedBuffers(PrioritizedDeque<SequenceBuffer>)获取Buffer
+                 */
                 Optional<BufferAndAvailability> bufferAndAvailabilityOpt =
                         inputChannel.getNextBuffer();
 

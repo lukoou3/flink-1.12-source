@@ -72,6 +72,11 @@ class NettyServer {
                 sslHandlerFactory -> new ServerChannelInitializer(protocol, sslHandlerFactory));
     }
 
+    /**
+     * 就和正常的ServerBootstrap启动差不多，关键的自定义处理逻辑在ServerChannelInitializer中ServerChannelInitializer返回的ChannelHandler在
+     * 直接去看：
+     * @see NettyProtocol#getServerChannelHandlers()
+     */
     int init(
             NettyBufferPool nettyBufferPool,
             Function<SSLHandlerFactory, ServerChannelInitializer> channelInitializer)

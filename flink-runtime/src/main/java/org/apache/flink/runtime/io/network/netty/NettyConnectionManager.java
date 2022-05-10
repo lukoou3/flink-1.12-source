@@ -28,6 +28,11 @@ import java.io.IOException;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+/**
+ * NettyConnectionManager负责netty的连接，其中包含NettyServer和NettyClient，即netty的服务端和客户端，NettyConnectionManager的启动会初始化NettyServer和NettyClient
+ * NettyServer和NettyClient全局只需一个就行，NettyServer不用说只需一个就行，NettyClient也是只需一个，每个client单独connect即可和saprk一样，server和client都只需一个bootstrap
+ *
+ */
 public class NettyConnectionManager implements ConnectionManager {
 
     private final NettyServer server;
