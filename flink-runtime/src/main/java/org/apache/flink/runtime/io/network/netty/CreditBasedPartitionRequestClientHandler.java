@@ -363,6 +363,7 @@ class CreditBasedPartitionRequestClientHandler extends ChannelInboundHandlerAdap
     }
 
     /**
+     * 将credit以AddCredit消息类型发送给生产者。
      * Tries to write&flush unannounced credits for the next input channel in queue.
      *
      * <p>This method may be called by the first input channel enqueuing, or the complete future's

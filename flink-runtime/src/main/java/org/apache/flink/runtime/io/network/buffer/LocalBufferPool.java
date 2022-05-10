@@ -328,6 +328,33 @@ class LocalBufferPool implements BufferPool {
      *          getAvailableFuture().get() 等待数据可写
      *          LocalBufferPool.availableMemorySegments 可用的内存buffer，用完时写入就暂时阻塞，类型是ArrayDeque<MemorySegment>
      *
+     * 其实非local模式模拟反压时，上游task会阻塞在这个方法的getAvailableFuture().get()，这个和下游算子在上游没数据发出时阻塞类似
+     * 别被这个类的名字迷惑了，LocalBufferPool不是只用在local模式
+     * 在上游算子阻塞等待时导出线程栈，查看Legacy Source Thread此时的调用顺序，大概是(和local模式一样)：
+     *      ctx.collect(element) SourceFunction输出元素，实际调用类是WatermarkContext.collect
+     *      CountingOutput.collect(StreamRecord) 包装的Output，用于统计速出元素数，updates metrics
+     *      ChainingOutput.collect(StreamRecord)
+     *      StreamMap.processElement(StreamRecord) chain的调用
+     *      RecordWriterOutput.collect(StreamRecord) 最后一个chain调用输出
+     *      RecordWriterOutput.pushToRecordWriter(StreamRecord)
+     *      ChannelSelectorRecordWriter.emit(record)
+     *          分区：emit(record, channelSelector.selectChannel(record))
+     *              targetPartition.emitRecord(serializeRecord(serializer, record), targetSubpartition)
+     *          输出flush: targetPartition.flush(targetSubpartition)
+     *      BufferWritingResultPartition.emitRecord(ByteBuffer record, int targetSubpartition) 输出到buffer
+     *          当buffer满了暂时不能输出时会阻塞，appendUnicastDataForRecordContinuation(record, targetSubpartition)
+     *      最终阻塞的方法在LocalBufferPool.requestMemorySegmentBlocking(int)
+     *          getAvailableFuture().get() 等待数据可写
+     *          LocalBufferPool.availableMemorySegments 可用的内存buffer，用完时写入就暂时阻塞，类型是ArrayDeque<MemorySegment>
+     *
+     * 非local模式非阻塞时，调用顺序大概是：
+     *      BufferWritingResultPartition.emitRecord
+     *      appendUnicastDataForRecordContinuation(record, targetSubpartition)
+     *      ResultSubpartition.add(bufferConsumer, partialRecordLength)
+     *      ResultSubpartition.add(bufferConsumer, partialRecordLength, finish)
+     *          addBuffer(bufferConsumer, partialRecordLength) 放入buffers，这个应该是生产者消费模式
+     *          buffers.add(new BufferConsumerWithPartialRecordLength(bufferConsumer, partialRecordLength))
+     *
      */
     private MemorySegment requestMemorySegmentBlocking(int targetChannel)
             throws InterruptedException {

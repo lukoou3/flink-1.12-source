@@ -143,6 +143,7 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
     }
 
     /**
+     * 检查输出数据
      * Adds unannounced credits from the consumer or resumes data consumption after an exactly-once
      * checkpoint and enqueues the corresponding reader for this consumer (if not enqueued yet).
      *
@@ -196,6 +197,13 @@ class PartitionRequestQueue extends ChannelInboundHandlerAdapter {
         writeAndFlushNextMessageIfPossible(ctx.channel());
     }
 
+    /**
+     * 向下游写入数据
+     * CreditBasedSequenceNumberingViewReader#getNextBuffer()
+     * PipelinedSubpartitionView#getNextBuffer()
+     * PipelinedSubpartition#pollBuffer()
+     * buffers是PipelinedSubpartition队列，ctx.collect最终把数据写入buffer，netty会消费buffer写入下游
+     */
     private void writeAndFlushNextMessageIfPossible(final Channel channel) throws IOException {
         if (fatalError || !channel.isWritable()) {
             return;

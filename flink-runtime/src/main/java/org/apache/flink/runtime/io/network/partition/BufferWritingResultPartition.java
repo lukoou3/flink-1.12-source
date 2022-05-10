@@ -141,11 +141,14 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
 
     @Override
     public void emitRecord(ByteBuffer record, int targetSubpartition) throws IOException {
+        // 这个方法会写入数据到Buffer
         BufferBuilder buffer = appendUnicastDataForNewRecord(record, targetSubpartition);
 
+        // 如果record的字节没写完，这个buffer用完了
         while (record.hasRemaining()) {
             // full buffer, partial record
             finishUnicastBufferBuilder(targetSubpartition);
+            // 这个方法会写入数据到Buffer
             buffer = appendUnicastDataForRecordContinuation(record, targetSubpartition);
         }
 
@@ -310,6 +313,7 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
             throws IOException {
         checkInProduceState();
         ensureUnicastMode();
+        // 申请资源，这里可能会阻塞，最终阻塞在LocalBufferPool.requestMemorySegmentBlocking
         final BufferBuilder bufferBuilder = requestNewBufferBuilderFromPool(targetSubpartition);
         unicastBufferBuilders[targetSubpartition] = bufferBuilder;
 

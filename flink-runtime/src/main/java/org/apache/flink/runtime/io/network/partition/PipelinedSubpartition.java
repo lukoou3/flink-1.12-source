@@ -151,6 +151,7 @@ public class PipelinedSubpartition extends ResultSubpartition
                 return false;
             }
 
+            // 添加buffer，buffer会被消费写入下游
             // Add the bufferConsumer and update the stats
             if (addBuffer(bufferConsumer, partialRecordLength)) {
                 prioritySequenceNumber = sequenceNumber;

@@ -406,6 +406,9 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>> extends Ab
      * @see CheckpointedInputGate#pollNext()
      * @see InputGateWithMetrics#pollNext()
      * @see SingleInputGate#pollNext()
+     * @see SingleInputGate#getNextBufferOrEvent
+     * @see SingleInputGate#waitAndGetNextData
+     * @see org.apache.flink.runtime.io.network.partition.consumer.RemoteInputChannel#getNextBuffer
      *
      * 处理每条数据在StreamTaskNetworkInput#emitNext(DataOutput output)中调用processElement(deserializationDelegate.getInstance(), output);
      * @see StreamTaskNetworkInput#emitNext(DataOutput output)

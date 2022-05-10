@@ -133,7 +133,7 @@ class PartitionRequestServerHandler extends SimpleChannelInboundHandler<NettyMes
                 outboundQueue.close();
             } else if (msgClazz == AddCredit.class) {
                 AddCredit request = (AddCredit) msg;
-
+                // 增加Credit，检查向下游输出数据
                 outboundQueue.addCreditOrResumeConsumption(
                         request.receiverId, reader -> reader.addCredit(request.credit));
             } else if (msgClazz == ResumeConsumption.class) {
