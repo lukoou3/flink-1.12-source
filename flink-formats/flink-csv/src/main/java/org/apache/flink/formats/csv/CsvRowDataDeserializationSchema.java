@@ -152,6 +152,7 @@ public final class CsvRowDataDeserializationSchema implements DeserializationSch
             return null;
         }
         try {
+            // 这里竟然是用objectReader读成JsonNode，然后再转成RowData
             final JsonNode root = objectReader.readValue(message);
             return (RowData) runtimeConverter.convert(root);
         } catch (Throwable t) {

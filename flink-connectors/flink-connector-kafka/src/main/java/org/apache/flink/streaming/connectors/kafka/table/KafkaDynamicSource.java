@@ -201,6 +201,7 @@ public class KafkaDynamicSource
         final TypeInformation<RowData> producedTypeInfo =
                 context.createTypeInformation(producedDataType);
 
+        // 这里直接复用的FlinkKafkaConsumer，nb啊，不用单独定义了，这样很容易在公司提供的stream api上包装出sql的支持
         final FlinkKafkaConsumer<RowData> kafkaConsumer =
                 createKafkaConsumer(keyDeserialization, valueDeserialization, producedTypeInfo);
 
@@ -366,6 +367,7 @@ public class KafkaDynamicSource
                                         adjustedPhysicalArity))
                         .toArray();
 
+        // 这个kafkaDeserializer参数还挺多
         final KafkaDeserializationSchema<RowData> kafkaDeserializer =
                 new DynamicKafkaDeserializationSchema(
                         adjustedPhysicalArity,
