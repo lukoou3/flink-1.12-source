@@ -104,6 +104,10 @@ final class Elasticsearch6DynamicSink implements DynamicTableSink {
     @Override
     public ChangelogMode getChangelogMode(ChangelogMode requestedMode) {
         ChangelogMode.Builder builder = ChangelogMode.newBuilder();
+        /**
+         * 可以不接受UPDATE_BEFORE，不能不接受UPDATE_AFTER
+         * UPDATE时下游表示只要UPDATE_AFTER，优化器会不发UPDATE_BEFORE，这是合理的，毕竟mysql/es等都支持upsert操作
+         */
         for (RowKind kind : requestedMode.getContainedKinds()) {
             if (kind != RowKind.UPDATE_BEFORE) {
                 builder.addContainedKind(kind);
@@ -118,6 +122,7 @@ final class Elasticsearch6DynamicSink implements DynamicTableSink {
             SerializationSchema<RowData> format =
                     this.format.createRuntimeEncoder(context, schema.toRowDataType());
 
+            // 关键的处理逻辑
             final RowElasticsearchSinkFunction upsertFunction =
                     new RowElasticsearchSinkFunction(
                             IndexGeneratorFactory.createIndexGenerator(config.getIndex(), schema),
@@ -133,6 +138,10 @@ final class Elasticsearch6DynamicSink implements DynamicTableSink {
             builder.setFailureHandler(config.getFailureHandler());
             builder.setBulkFlushMaxActions(config.getBulkFlushMaxActions());
             builder.setBulkFlushMaxSizeMb((int) (config.getBulkFlushMaxByteSize() >> 20));
+            /**
+             * org.elasticsearch.action.bulk.BulkProcessor.Builder.flushInterval
+             * 定时flush是elasticsearch提供的
+             */
             builder.setBulkFlushInterval(config.getBulkFlushInterval());
             builder.setBulkFlushBackoff(config.isBulkFlushBackoffEnabled());
             config.getBulkFlushBackoffType().ifPresent(builder::setBulkFlushBackoffType);

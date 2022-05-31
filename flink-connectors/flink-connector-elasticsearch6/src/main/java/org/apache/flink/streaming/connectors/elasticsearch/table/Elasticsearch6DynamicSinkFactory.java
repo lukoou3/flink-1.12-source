@@ -86,6 +86,7 @@ public class Elasticsearch6DynamicSinkFactory implements DynamicTableSinkFactory
         final FactoryUtil.TableFactoryHelper helper =
                 FactoryUtil.createTableFactoryHelper(this, context);
 
+        // 这个还需要用format?
         final EncodingFormat<SerializationSchema<RowData>> format =
                 helper.discoverEncodingFormat(SerializationFormatFactory.class, FORMAT_OPTION);
 

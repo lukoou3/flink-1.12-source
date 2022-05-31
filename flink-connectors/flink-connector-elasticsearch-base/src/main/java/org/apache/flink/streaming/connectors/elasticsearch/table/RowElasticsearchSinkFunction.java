@@ -74,6 +74,7 @@ class RowElasticsearchSinkFunction implements ElasticsearchSinkFunction<RowData>
     @Override
     public void process(RowData element, RuntimeContext ctx, RequestIndexer indexer) {
         switch (element.getRowKind()) {
+            // 不支持 UPDATE_BEFORE("-U", (byte) 1)
             case INSERT:
             case UPDATE_AFTER:
                 processUpsert(element, indexer);

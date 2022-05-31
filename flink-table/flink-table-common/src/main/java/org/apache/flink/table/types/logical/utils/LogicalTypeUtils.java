@@ -53,6 +53,8 @@ public final class LogicalTypeUtils {
     }
 
     /**
+     * 看看对应的内部内部类型，内部使用什么类型储存
+     *
      * Returns the conversion class for the given {@link LogicalType} that is used by the table
      * runtime as internal data structure.
      *
@@ -63,25 +65,40 @@ public final class LogicalTypeUtils {
         switch (type.getTypeRoot()) {
             case CHAR:
             case VARCHAR:
+                // CharType(length) => CHAR
+                // VarCharType(length) => VARCHAR
+                // string(max length varChar) => VARCHAR
                 return StringData.class;
             case BOOLEAN:
+                // BooleanType => BOOLEAN
                 return Boolean.class;
             case BINARY:
             case VARBINARY:
+                // BinaryType => BINARY
+                // VarBinaryType => VARBINARY
                 return byte[].class;
             case DECIMAL:
+                // DecimalType => DECIMAL
                 return DecimalData.class;
             case TINYINT:
+                // TinyIntType => TINYINT
                 return Byte.class;
             case SMALLINT:
+                // SmallIntType => SMALLINT
                 return Short.class;
             case INTEGER:
             case DATE:
             case TIME_WITHOUT_TIME_ZONE:
             case INTERVAL_YEAR_MONTH:
+                // IntType => INTEGER
+                // DateType => DATE
+                // TimeType => TIME_WITHOUT_TIME_ZONE
+                // YearMonthIntervalType => INTERVAL_YEAR_MONTH
                 return Integer.class;
             case BIGINT:
             case INTERVAL_DAY_TIME:
+                // BigIntType => BIGINT
+                // DayTimeIntervalType => INTERVAL_DAY_TIME
                 return Long.class;
             case FLOAT:
                 return Float.class;
@@ -89,6 +106,8 @@ public final class LogicalTypeUtils {
                 return Double.class;
             case TIMESTAMP_WITHOUT_TIME_ZONE:
             case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                // TimestampType => TIMESTAMP_WITHOUT_TIME_ZONE
+                // LocalZonedTimestampType => TIMESTAMP_WITH_LOCAL_TIME_ZONE
                 return TimestampData.class;
             case TIMESTAMP_WITH_TIME_ZONE:
                 throw new UnsupportedOperationException("Unsupported type: " + type);

@@ -55,6 +55,7 @@ public final class TableSimpleStatementExecutor implements JdbcBatchStatementExe
 
     @Override
     public void addToBatch(RowData record) throws SQLException {
+        // 转换
         converter.toExternal(record, st);
         st.addBatch();
     }

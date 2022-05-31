@@ -52,6 +52,7 @@ public final class TableBufferedStatementExecutor implements JdbcBatchStatementE
 
     @Override
     public void addToBatch(RowData record) throws SQLException {
+        // copy or not，ctx.getExecutionConfig().isObjectReuseEnabled()就copy
         RowData value = valueTransform.apply(record); // copy or not
         buffer.add(value);
     }

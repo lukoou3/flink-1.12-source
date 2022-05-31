@@ -87,20 +87,29 @@ public class RowDataToJsonConverters implements Serializable {
 
     /** Creates a runtime converter which is null safe. */
     public RowDataToJsonConverter createConverter(LogicalType type) {
+        // 对象是null时直接输出null
         return wrapIntoNullableConverter(createNotNullConverter(type));
     }
 
+    /**
+     * 看看这个，可以知道flink sql内部使用的类型，直接看这个方法就行:org.apache.flink.table.types.logical.utils.LogicalTypeUtils#toInternalConversionClass(org.apache.flink.table.types.logical.LogicalType)
+     * 在这个基础上增加了wrapIntoNullableConverter，对象是null时直接输出null
+     */
     /** Creates a runtime converter which assuming input object is not null. */
     private RowDataToJsonConverter createNotNullConverter(LogicalType type) {
         switch (type.getTypeRoot()) {
             case NULL:
+                // NULL => NullType => null
                 return (mapper, reuse, value) -> mapper.getNodeFactory().nullNode();
             case BOOLEAN:
+                // BOOLEAN => boolean
                 return (mapper, reuse, value) ->
                         mapper.getNodeFactory().booleanNode((boolean) value);
             case TINYINT:
+                // TINYINT => byte
                 return (mapper, reuse, value) -> mapper.getNodeFactory().numberNode((byte) value);
             case SMALLINT:
+                // SMALLINT => short
                 return (mapper, reuse, value) -> mapper.getNodeFactory().numberNode((short) value);
             case INTEGER:
             case INTERVAL_YEAR_MONTH:

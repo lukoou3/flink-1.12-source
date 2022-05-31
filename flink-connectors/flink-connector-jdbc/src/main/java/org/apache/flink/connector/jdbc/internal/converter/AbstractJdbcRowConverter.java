@@ -191,6 +191,7 @@ public abstract class AbstractJdbcRowConverter implements JdbcRowConverter {
 
     protected JdbcSerializationConverter wrapIntoNullableExternalConverter(
             JdbcSerializationConverter jdbcSerializationConverter, LogicalType type) {
+        // 和spark sql中类型都使用了严格的对应格式
         final int sqlType =
                 JdbcTypeUtil.typeInformationToSqlType(
                         TypeConversions.fromDataTypeToLegacyInfo(
@@ -206,6 +207,10 @@ public abstract class AbstractJdbcRowConverter implements JdbcRowConverter {
         };
     }
 
+    /**
+     *
+     * RowData对应的jdbc类型
+     */
     protected JdbcSerializationConverter createExternalConverter(LogicalType type) {
         switch (type.getTypeRoot()) {
             case BOOLEAN:

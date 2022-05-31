@@ -59,6 +59,10 @@ public class JdbcDynamicTableSink implements DynamicTableSink {
     @Override
     public ChangelogMode getChangelogMode(ChangelogMode requestedMode) {
         validatePrimaryKey(requestedMode);
+        /**
+         * 可以不接受UPDATE_BEFORE，不能不接受UPDATE_AFTER
+         * UPDATE时下游表示只要UPDATE_AFTER，优化器会不发UPDATE_BEFORE，这是合理的，毕竟mysql/es等都支持upsert操作
+         */
         return ChangelogMode.newBuilder()
                 .addContainedKind(RowKind.INSERT)
                 .addContainedKind(RowKind.DELETE)

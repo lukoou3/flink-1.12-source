@@ -98,6 +98,7 @@ public class JdbcDynamicOutputFormatBuilder implements Serializable {
                         .map(DataType::getLogicalType)
                         .toArray(LogicalType[]::new);
         if (dmlOptions.getKeyFields().isPresent() && dmlOptions.getKeyFields().get().length > 0) {
+            // sql 支持upsert，但是sql的列还得配置key
             // upsert query
             return new JdbcBatchingOutputFormat<>(
                     new SimpleJdbcConnectionProvider(jdbcOptions),

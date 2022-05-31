@@ -53,6 +53,7 @@ import static org.apache.flink.connector.jdbc.internal.options.JdbcOptions.CONNE
 import static org.apache.flink.connector.jdbc.utils.JdbcUtils.setRecordToStatement;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+// stream和sql都是使用的这个
 /** A JDBC outputFormat that supports batching records before writing records to database. */
 @Internal
 public class JdbcBatchingOutputFormat<
