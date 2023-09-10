@@ -1067,6 +1067,7 @@ public final class BinarySegmentUtils {
             int baseOffset,
             int fieldOffset,
             long variablePartOffsetAndLen) {
+        // 和spark比做了一点优化
         long mark = variablePartOffsetAndLen & HIGHEST_FIRST_BIT;
         if (mark == 0) {
             final int subOffset = (int) (variablePartOffsetAndLen >> 32);

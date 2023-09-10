@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.io.UTFDataFormatException;
 
 /**
+ * 由多个内存页支持的所有输入视图的基类。这个基类包含从页面读取数据和检测页面边界交叉的所有解码方法。
+ * 一旦越过边界，具体的子类必须实现提供下一个内存页的方法。
  * The base class for all input views that are backed by multiple memory pages. This base class
  * contains all decoding methods to read data from a page and detect page boundary crossing. The
  * concrete sub classes must implement the methods to provide the next memory page once the boundary

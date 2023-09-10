@@ -29,6 +29,12 @@ import java.io.IOException;
 public interface ResultSubpartitionView {
 
     /**
+     * 返回此队列迭代器的下一个Buffer实例。
+     *
+     * 如果当前没有可用的实例，它将返回null。例如，当流水线队列生产者比消费者慢，或者溢出的队列需要读入更多数据时，可能会发生这种情况。
+     *
+     * 重要提示：使用者必须确保每个缓冲区实例在用完后最终都会使用buffer.recycleBuffer（）进行回收。
+     *
      * Returns the next {@link Buffer} instance of this queue iterator.
      *
      * <p>If there is currently no instance available, it will return <code>null</code>. This might

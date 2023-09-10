@@ -110,6 +110,7 @@ public final class MemorySegmentFactory {
     }
 
     /**
+     * 分配一些未unpooled的堆外内存，并创建一个代表该内存的新内存段。
      * Allocates some unpooled off-heap memory and creates a new memory segment that represents that
      * memory.
      *
@@ -121,6 +122,7 @@ public final class MemorySegmentFactory {
     }
 
     /**
+     * 分配一些未unpooled的堆外内存，并创建一个代表该内存的新内存段。
      * Allocates some unpooled off-heap memory and creates a new memory segment that represents that
      * memory.
      *

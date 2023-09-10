@@ -113,6 +113,7 @@ public class NetworkBufferPool
 
         try {
             for (int i = 0; i < numberOfSegmentsToAllocate; i++) {
+                // 申请MemorySegments
                 availableMemorySegments.add(
                         MemorySegmentFactory.allocateUnpooledOffHeapMemory(segmentSize, null));
             }

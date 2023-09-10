@@ -114,7 +114,7 @@ public final class BinaryRowData extends BinarySection implements RowData, Typed
     public BinaryRowData(int arity) {
         checkArgument(arity >= 0);
         this.arity = arity;
-        this.nullBitsSizeInBytes = calculateBitSetWidthInBytes(arity);
+        this.nullBitsSizeInBytes = calculateBitSetWidthInBytes(arity); // 这个和spark的UnsafeRow一样
     }
 
     private int getFieldOffset(int pos) {

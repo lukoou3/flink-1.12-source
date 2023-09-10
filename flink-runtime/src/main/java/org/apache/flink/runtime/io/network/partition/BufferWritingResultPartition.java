@@ -331,6 +331,7 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
 
     private BufferBuilder requestNewBufferBuilderFromPool(int targetSubpartition)
             throws IOException {
+        // 第一次不阻塞
         BufferBuilder bufferBuilder = bufferPool.requestBufferBuilder(targetSubpartition);
         if (bufferBuilder != null) {
             return bufferBuilder;
@@ -338,6 +339,7 @@ public abstract class BufferWritingResultPartition extends ResultPartition {
 
         final long start = System.currentTimeMillis();
         try {
+            //失败一次就Blocking申请
             bufferBuilder = bufferPool.requestBufferBuilderBlocking(targetSubpartition);
             idleTimeMsPerSecond.markEvent(System.currentTimeMillis() - start);
             return bufferBuilder;

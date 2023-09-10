@@ -85,7 +85,9 @@ abstract class AbstractBinaryWriter implements BinaryWriter {
             writeBytes(pos, javaObject.getBytes(StandardCharsets.UTF_8));
         } else {
             int len = string.getSizeInBytes();
+            // 小于8做了优化, 否则和spark UnsafeRowWriter类似
             if (len <= 7) {
+                // 这个bytes还是线程重用的，这个没有并发问题吗？应该没有，每个线程的bytes是独立的，单个线程不会这个方法走一半然后走另一个，那个是携程。
                 byte[] bytes = BinarySegmentUtils.allocateReuseBytes(len);
                 BinarySegmentUtils.copyToBytes(
                         string.getSegments(), string.getOffset(), bytes, 0, len);
@@ -105,6 +107,7 @@ abstract class AbstractBinaryWriter implements BinaryWriter {
         }
     }
 
+    // 写入数组, 和spark类似，但是感觉没spark方便
     @Override
     public void writeArray(int pos, ArrayData input, ArrayDataSerializer serializer) {
         BinaryArrayData binary = serializer.toBinaryArray(input);
@@ -316,6 +319,7 @@ abstract class AbstractBinaryWriter implements BinaryWriter {
 
     private static void writeBytesToFixLenPart(
             MemorySegment segment, int fieldOffset, byte[] bytes, int len) {
+        // 0x80 = 1000_0000, 第一个bit是1
         long firstByte = len | 0x80; // first bit is 1, other bits is len
         long sevenBytes = 0L; // real data
         if (BinaryRowData.LITTLE_ENDIAN) {

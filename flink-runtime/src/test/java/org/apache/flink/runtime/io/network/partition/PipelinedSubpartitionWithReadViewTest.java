@@ -62,6 +62,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 /**
+ * PipelinedSubpartition的附加测试，需要一个可用性侦听器和一个读取视图。
  * Additional tests for {@link PipelinedSubpartition} which require an availability listener and a
  * read view.
  *
@@ -85,6 +86,10 @@ public class PipelinedSubpartitionWithReadViewTest {
     @Before
     public void before() throws IOException {
         setup(ResultPartitionType.PIPELINED);
+        /**
+         * 初始化subpartition、availablityListener、readView
+         * 可以看到subpartition、availablityListener、readView的关系
+         */
         subpartition = new PipelinedSubpartition(0, resultPartition);
         availablityListener = new AwaitableBufferAvailablityListener();
         readView = subpartition.createReadView(availablityListener);

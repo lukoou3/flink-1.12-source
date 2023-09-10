@@ -127,6 +127,8 @@ public abstract class AbstractPagedOutputView implements DataOutputView, MemoryS
     }
 
     /**
+     * 将输出视图移到下一页。此方法在内部调用nextSegment（MemorySegment，int）方法，
+     * 将当前内存段赋予具体子类的实现，并获得下一个要写入的段。写入将在标头后的新段内继续。
      * Moves the output view to the next page. This method invokes internally the {@link
      * #nextSegment(MemorySegment, int)} method to give the current memory segment to the concrete
      * subclass' implementation and obtain the next segment to write to. Writing will continue

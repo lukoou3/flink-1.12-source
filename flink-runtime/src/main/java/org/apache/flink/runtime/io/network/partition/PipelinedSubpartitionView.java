@@ -47,6 +47,7 @@ public class PipelinedSubpartitionView implements ResultSubpartitionView {
     @Nullable
     @Override
     public BufferAndBacklog getNextBuffer() {
+        // 消费处理写入的数据
         return parent.pollBuffer();
     }
 

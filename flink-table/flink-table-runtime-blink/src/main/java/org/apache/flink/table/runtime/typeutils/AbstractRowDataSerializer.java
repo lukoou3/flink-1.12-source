@@ -54,6 +54,7 @@ public abstract class AbstractRowDataSerializer<T extends RowData> extends TypeS
             throws IOException;
 
     /**
+     * 这么什么地方调用？
      * De-serializes a record from the given source paged input view. For consistency with serialize
      * format, some implementations may need to skip some bytes of source before de-serializing,
      * .e.g {@link BinaryRowData}. Typically, the content read from source should be copied out when

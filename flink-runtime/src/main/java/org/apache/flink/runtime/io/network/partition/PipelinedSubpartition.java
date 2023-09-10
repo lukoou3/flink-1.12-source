@@ -49,6 +49,15 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /**
+ * 一种只在内存中使用流水线的子分区，可以使用一次。
+ *
+ * 每当ResultSubpartition.add（BufferConsumer）添加一个已完成的BufferConsumer或第二个BufferConsumer（在这种情况下，我们将假设第一个已完成）时，
+ * 我们都会通知通过ResultSubartition.createReadView（BufferAvailabilityListener）创建的读取视图新的数据可用性。
+ * 除了显式调用flush（）之外，我们总是只在第一个完成的缓冲区出现时通知，然后，读取器必须通过pollBuffer（）耗尽缓冲区，直到其返回值显示没有更多的缓冲区可用。
+ * 这将导致一个缓冲队列为空，或者还有一个未完成的BufferConsumer，通知最终将从中重新启动。
+ *
+ * 对flush（）的显式调用将强制队列中存在的任何BufferConsumer发出此通知。
+ *
  * A pipelined in-memory only subpartition, which can be consumed once.
  *
  * <p>Whenever {@link ResultSubpartition#add(BufferConsumer)} adds a finished {@link BufferConsumer}
@@ -72,7 +81,10 @@ public class PipelinedSubpartition extends ResultSubpartition
 
     // ------------------------------------------------------------------------
 
-    /** All buffers of this subpartition. Access to the buffers is synchronized on this object. */
+    /**
+     * 此子分区的所有缓冲区。对缓冲区的访问在此对象上同步。
+     * All buffers of this subpartition. Access to the buffers is synchronized on this object.
+     */
     final PrioritizedDeque<BufferConsumerWithPartialRecordLength> buffers =
             new PrioritizedDeque<>();
 
@@ -145,6 +157,7 @@ public class PipelinedSubpartition extends ResultSubpartition
 
         final boolean notifyDataAvailable;
         int prioritySequenceNumber = -1;
+        // 同步缩
         synchronized (buffers) {
             if (isFinished || isReleased) {
                 bufferConsumer.close();
@@ -266,6 +279,11 @@ public class PipelinedSubpartition extends ResultSubpartition
         }
     }
 
+    /**
+     * 消费发送buffers
+     * org.apache.flink.runtime.io.network.partition.PipelinedSubpartitionView#getNextBuffer()
+     * @return
+     */
     @Nullable
     BufferAndBacklog pollBuffer() {
         synchronized (buffers) {

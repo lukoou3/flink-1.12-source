@@ -34,6 +34,10 @@ public class ListMemorySegmentPool implements MemorySegmentPool {
         this.pageSize = segments.get(0).size();
     }
 
+    /**
+     * 申请
+     * @return
+     */
     @Override
     public MemorySegment nextSegment() {
         if (this.segments.size() > 0) {
@@ -48,6 +52,10 @@ public class ListMemorySegmentPool implements MemorySegmentPool {
         return pageSize;
     }
 
+    /**
+     * 归还
+     * @param memory the pages which want to be returned.
+     */
     @Override
     public void returnAll(List<MemorySegment> memory) {
         segments.addAll(memory);

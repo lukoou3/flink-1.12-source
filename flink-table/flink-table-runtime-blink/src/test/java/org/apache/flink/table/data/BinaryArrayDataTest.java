@@ -49,7 +49,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-/** Test of {@link BinaryArrayData} and {@link BinaryArrayWriter}. */
+/**
+ * 写数组
+ * Test of {@link BinaryArrayData} and {@link BinaryArrayWriter}.
+ */
 public class BinaryArrayDataTest {
 
     @Test
@@ -67,6 +70,7 @@ public class BinaryArrayDataTest {
         assertTrue(array.isNullAt(1));
         assertEquals(array.getInt(2), 666);
 
+        // 把数组写到BinaryRowData
         // 2.test write to binary row.
         {
             BinaryRowData row2 = new BinaryRowData(1);

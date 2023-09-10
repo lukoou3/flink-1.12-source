@@ -48,12 +48,18 @@ import java.util.function.Consumer;
 import static org.apache.flink.core.memory.MemorySegmentFactory.allocateOffHeapUnsafeMemory;
 
 /**
+ *
+ * 内存管理器管理Flink用于排序、哈希、缓存或堆外状态后端（例如RocksDB）的内存。
+ * 内存以相等大小的MemorySegments或特定大小的保留块表示。操作员通过请求多个内存段或通过保留块来分配内存。
+ * 任何分配的内存都必须释放，以便以后重用。
  * The memory manager governs the memory that Flink uses for sorting, hashing, caching or off-heap
  * state backends (e.g. RocksDB). Memory is represented either in {@link MemorySegment}s of equal
  * size or in reserved chunks of certain size. Operators allocate the memory either by requesting a
  * number of memory segments or by reserving chunks. Any allocated memory has to be released to be
  * reused later.
  *
+ * 内存段表示为堆外不安全内存区域（均通过HybridMemorySegment）。
+ * 释放内存段将使其可由垃圾收集器重新请求，但不一定会立即释放底层内存
  * <p>The memory segments are represented as off-heap unsafe memory regions (both via {@link
  * HybridMemorySegment}). Releasing a memory segment will make it re-claimable by the garbage
  * collector, but does not necessarily immediately releases the underlying memory.

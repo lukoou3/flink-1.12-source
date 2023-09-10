@@ -123,6 +123,7 @@ public final class BinaryRowWriter extends AbstractBinaryWriter {
 
     @Override
     public void afterGrow() {
+        // 扩容后修改segment指向
         row.pointTo(segment, 0, segment.size());
     }
 }

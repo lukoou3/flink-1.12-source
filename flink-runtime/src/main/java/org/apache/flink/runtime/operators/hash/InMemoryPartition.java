@@ -280,6 +280,7 @@ public class InMemoryPartition<T> {
     }
 
     /**
+     * 如果由于下一次压缩仍然可以成功，所以没有足够的段可用，则尝试分配指定数量的段并且应该仅由压缩分区使用的操作将以静默方式失败
      * attempts to allocate specified number of segments and should only be used by compaction
      * partition fails silently if not enough segments are available since next compaction could
      * still succeed

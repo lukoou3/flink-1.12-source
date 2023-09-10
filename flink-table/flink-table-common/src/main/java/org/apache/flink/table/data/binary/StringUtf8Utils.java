@@ -37,7 +37,10 @@ final class StringUtf8Utils {
         // do not instantiate
     }
 
-    /** This method must have the same result with JDK's String.getBytes. */
+    /**
+     * 这个还特意实现了encodeUTF8，是比jdk默认的快吗
+     * This method must have the same result with JDK's String.getBytes.
+     * */
     public static byte[] encodeUTF8(String str) {
         byte[] bytes = allocateReuseBytes(str.length() * MAX_BYTES_PER_CHAR);
         int len = encodeUTF8(str, bytes);

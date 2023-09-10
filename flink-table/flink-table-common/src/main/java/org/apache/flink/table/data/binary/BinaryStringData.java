@@ -106,6 +106,10 @@ public final class BinaryStringData extends LazyBinaryFormat<String> implements 
     // Public Interfaces
     // ------------------------------------------------------------------------------------------
 
+    /**
+     * 可以看看他怎么使用segments的，可以学学
+     * @return
+     */
     @Override
     public byte[] toBytes() {
         ensureMaterialized();
