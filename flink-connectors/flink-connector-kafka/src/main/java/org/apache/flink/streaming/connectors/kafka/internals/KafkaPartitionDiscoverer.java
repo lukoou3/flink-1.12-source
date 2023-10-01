@@ -65,6 +65,7 @@ public class KafkaPartitionDiscoverer extends AbstractPartitionDiscoverer {
         }
     }
 
+    // 获取所有的分区
     @Override
     protected List<KafkaTopicPartition> getAllPartitionsForTopics(List<String> topics)
             throws WakeupException, RuntimeException {

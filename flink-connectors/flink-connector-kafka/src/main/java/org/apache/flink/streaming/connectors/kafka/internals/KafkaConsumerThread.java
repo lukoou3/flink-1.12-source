@@ -358,6 +358,8 @@ public class KafkaConsumerThread<T> extends Thread {
     // ------------------------------------------------------------------------
 
     /**
+     * assign 分区，初始化开始消费位置
+     *
      * Reestablishes the assigned partitions for the consumer. The reassigned partitions consists of
      * the provided new partitions and whatever partitions was already previously assigned to the
      * consumer.
@@ -417,6 +419,7 @@ public class KafkaConsumerThread<T> extends Thread {
                         oldPartitionToPosition.getKey(), oldPartitionToPosition.getValue());
             }
 
+            // 获取分区位置
             // offsets in the state of new partitions may still be placeholder sentinel values if we
             // are:
             //   (1) starting fresh,
@@ -427,24 +430,29 @@ public class KafkaConsumerThread<T> extends Thread {
             for (KafkaTopicPartitionState<T, TopicPartition> newPartitionState : newPartitions) {
                 if (newPartitionState.getOffset()
                         == KafkaTopicPartitionStateSentinel.EARLIEST_OFFSET) {
+                    // 设置，从EARLIEST开始消费
                     consumerTmp.seekToBeginning(
                             Collections.singletonList(newPartitionState.getKafkaPartitionHandle()));
                     newPartitionState.setOffset(
                             consumerTmp.position(newPartitionState.getKafkaPartitionHandle()) - 1);
                 } else if (newPartitionState.getOffset()
                         == KafkaTopicPartitionStateSentinel.LATEST_OFFSET) {
+                    // 设置，从LATEST开始消费
                     consumerTmp.seekToEnd(
                             Collections.singletonList(newPartitionState.getKafkaPartitionHandle()));
                     newPartitionState.setOffset(
                             consumerTmp.position(newPartitionState.getKafkaPartitionHandle()) - 1);
                 } else if (newPartitionState.getOffset()
                         == KafkaTopicPartitionStateSentinel.GROUP_OFFSET) {
+                    // 默认情况下，KafkaConsumer会自动查找提交组偏移量的consumer位置，因此我们不需要这样做。
                     // the KafkaConsumer by default will automatically seek the consumer position
                     // to the committed group offset, so we do not need to do it.
-
+                    // 可以看出来PartitionState存的是已消费的最大offset，下一个消费的offset是PartitionState里的 + 1
                     newPartitionState.setOffset(
+                            // 设置
                             consumerTmp.position(newPartitionState.getKafkaPartitionHandle()) - 1);
                 } else {
+                    // 可以看出来PartitionState存的是已消费的最大offset，下一个消费的offset是PartitionState里的 + 1
                     consumerTmp.seek(
                             newPartitionState.getKafkaPartitionHandle(),
                             newPartitionState.getOffset() + 1);

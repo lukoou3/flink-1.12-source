@@ -291,13 +291,14 @@ public class FlinkKafkaConsumer<T> extends FlinkKafkaConsumerBase<T> {
         // this is ok because this is a one-time operation that happens only on startup
         try (KafkaConsumer<?, ?> consumer = new KafkaConsumer(properties)) {
             for (Map.Entry<TopicPartition, OffsetAndTimestamp> partitionToOffset :
+                    // 获取指定时间的Offsets
                     consumer.offsetsForTimes(partitionOffsetsRequest).entrySet()) {
 
                 result.put(
                         new KafkaTopicPartition(
                                 partitionToOffset.getKey().topic(),
                                 partitionToOffset.getKey().partition()),
-                        (partitionToOffset.getValue() == null)
+                        (partitionToOffset.getValue() == null) // 可能为null
                                 ? null
                                 : partitionToOffset.getValue().offset());
             }

@@ -136,9 +136,11 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
                 for (KafkaTopicPartitionState<T, TopicPartition> partition :
                         subscribedPartitionStates()) {
 
+                    // 获取单个分区的Records
                     List<ConsumerRecord<byte[], byte[]>> partitionRecords =
                             records.records(partition.getKafkaPartitionHandle());
 
+                    // 处理单个分区的Records，已经offset
                     partitionConsumerRecordsHandler(partitionRecords, partition);
                 }
             }
@@ -178,6 +180,7 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
         for (ConsumerRecord<byte[], byte[]> record : partitionRecords) {
             deserializer.deserialize(record, kafkaCollector);
 
+            // 处理watermarks，更新offset
             // emit the actual records. this also updates offset state atomically and emits
             // watermarks
             emitRecordsWithTimestamps(

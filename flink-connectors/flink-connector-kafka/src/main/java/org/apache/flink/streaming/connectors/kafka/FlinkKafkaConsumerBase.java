@@ -453,6 +453,12 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
     }
 
     /**
+     * 指定使用者从指定的时间戳开始读取分区。指定的时间戳必须在当前时间戳之前。这使得消费者可以忽略Zookeeper/Kafka代理中任何已提交的组偏移。
+     *
+     * 消费者将从Kafka中查找时间戳大于或等于特定时间戳的最早偏移量。如果没有这样的偏移量，消费者将使用最新的偏移量从kafka读取数据。
+     *
+     * 当从检查点或保存点还原使用者时，此方法不会影响从何处读取分区。从检查点或保存点恢复使用者时，将只使用恢复状态下的偏移量。
+     *
      * Specifies the consumer to start reading partitions from a specified timestamp. The specified
      * timestamp must be before the current timestamp. This lets the consumer ignore any committed
      * group offsets in Zookeeper / Kafka brokers.
@@ -480,7 +486,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
                 startupOffsetsTimestamp,
                 currentTimestamp);
 
-        this.startupMode = StartupMode.TIMESTAMP;
+        this.startupMode = StartupMode.TIMESTAMP; // StartupMode = TIMESTAMP
         this.startupOffsetsTimestamp = startupOffsetsTimestamp;
         this.specificStartupOffsets = null;
         return this;
@@ -635,6 +641,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
                     for (KafkaTopicPartition seedPartition : allPartitions) {
                         Long specificOffset = specificStartupOffsets.get(seedPartition);
                         if (specificOffset != null) {
+                            // 配置特定的offset
                             // since the specified offsets represent the next record to read, we
                             // subtract
                             // it by one so that the initial state of the consumer will be correct
@@ -659,15 +666,18 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
                     }
 
                     for (Map.Entry<KafkaTopicPartition, Long> partitionToOffset :
+                            // 获取指定时间的Offsets
                             fetchOffsetsWithTimestamp(allPartitions, startupOffsetsTimestamp)
                                     .entrySet()) {
                         subscribedPartitionsToStartOffsets.put(
                                 partitionToOffset.getKey(),
                                 (partitionToOffset.getValue() == null)
+                                        // 如果获取不到，取latest offset
                                         // if an offset cannot be retrieved for a partition with the
                                         // given timestamp,
                                         // we default to using the latest offset for the partition
                                         ? KafkaTopicPartitionStateSentinel.LATEST_OFFSET
+                                        // 因为offsets代表下一次要读的record，我们减去1是初始化是对的
                                         // since the specified offsets represent the next record to
                                         // read, we subtract
                                         // it by one so that the initial state of the consumer will
@@ -1032,6 +1042,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
                     pendingOffsetsToCommit.put(context.getCheckpointId(), restoredState);
                 }
             } else {
+                // 从fetcher获取当前Offsets
                 HashMap<KafkaTopicPartition, Long> currentOffsets = fetcher.snapshotCurrentState();
 
                 if (offsetCommitMode == OffsetCommitMode.ON_CHECKPOINTS) {
@@ -1108,6 +1119,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
                     return;
                 }
 
+                // 提交Offset
                 fetcher.commitInternalOffsetsToKafka(offsets, offsetCommitCallback);
             } catch (Exception e) {
                 if (running) {
